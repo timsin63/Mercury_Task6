@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Task_6</string>
+    <string name="title">Title:</string>
+    <string name="date">Date:</string>
+    <string name="time">Time:</string>
+    <string name="description">Description:</string>
+    <string name="button_save">Save</string>
+    <string name="hint_title">Enter title here</string>
+    <string name="hint_description">Enter description here</string>
+    <string name="error_title">Please, enter the title</string>
+    <string name="error_date">Date and time must be greater than current</string>
+    <string name="timezone">Europe/Samara</string>
+</resources>
