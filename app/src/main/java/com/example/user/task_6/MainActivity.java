@@ -3,7 +3,6 @@ package com.example.user.task_6;
 import android.app.AlarmManager;
 import android.app.DatePickerDialog;
 
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TimePickerDialog;
 import java.util.Calendar;
@@ -12,10 +11,10 @@ import java.util.TimeZone;
 
 import android.content.Intent;
 
-import android.support.v4.app.TaskStackBuilder;
+import android.content.SharedPreferences;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.support.v7.app.NotificationCompat;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.DatePicker;
@@ -23,6 +22,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
+
+import com.google.gson.Gson;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -32,25 +33,40 @@ public class MainActivity extends AppCompatActivity {
     public static final String EXTRA_CALENDAR = "CALENDAR_EXTRA";
     public static final String EXTRA_TITLE = "TITLE_EXTRA";
     public static final String EXTRA_DESCRIPTION = "DESCRIPTION_EXTRA";
+    public static final String PREF_NAME = "PREF_NAME";
+    public static final int START_SERVICE_REQUEST_CODE = 123;
+    SharedPreferences preferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        calendar = new GregorianCalendar(TimeZone.getTimeZone(getResources().getString(R.string.timezone)));
+        preferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+
+        String title = preferences.getString(EXTRA_TITLE, null);
+        String description = preferences.getString(EXTRA_DESCRIPTION, null);
+        String savedCalendarJson = preferences.getString(EXTRA_CALENDAR, null);
 
         titleInput = (EditText) findViewById(R.id.title_input);
         descriptionInput = (EditText) findViewById(R.id.description_input);
-
         textDate = (TextView) findViewById(R.id.text_date);
+        textTime = (TextView) findViewById(R.id.text_time);
+
+        if (title != null && description != null && savedCalendarJson != null){
+            titleInput.setText(title);
+            descriptionInput.setText(description);
+            Gson gson = new Gson();
+            calendar = gson.fromJson(savedCalendarJson, Calendar.class);
+        } else {
+            calendar = new GregorianCalendar(TimeZone.getTimeZone(getResources().getString(R.string.timezone)));
+            calendar.set(Calendar.SECOND, 0);
+        }
+
         textDate.setText(calendar.get(Calendar.DAY_OF_MONTH) + "." + (calendar.get(Calendar.MONTH)+1) + "." + calendar.get(Calendar.YEAR));
 
-        textTime = (TextView) findViewById(R.id.text_time);
         textTime.setText(calendar.get(Calendar.MINUTE) < 10? calendar.get(Calendar.HOUR_OF_DAY) +
                 ":0" + calendar.get(Calendar.MINUTE) : calendar.get(Calendar.HOUR_OF_DAY) + ":" + calendar.get(Calendar.MINUTE));
-
-
 
         Button saveBtn = (Button) findViewById(R.id.button_save);
         saveBtn.setOnClickListener(new View.OnClickListener() {
@@ -65,34 +81,16 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                Intent serviceIntent = new Intent(getApplicationContext(), NotificationService.class);
-                serviceIntent.putExtra(EXTRA_CALENDAR, calendar);
-                serviceIntent.putExtra(EXTRA_TITLE, titleInput.getText());
-                serviceIntent.putExtra(EXTRA_DESCRIPTION, descriptionInput.getText());
+                Intent broadcastIntent = new Intent(getApplicationContext(), NotificationReceiver.class);
+                broadcastIntent.putExtra(EXTRA_CALENDAR, calendar);
+                broadcastIntent.putExtra(EXTRA_TITLE, titleInput.getText().toString());
+                broadcastIntent.putExtra(EXTRA_DESCRIPTION, descriptionInput.getText().toString());
 
-//                stopService(serviceIntent);
-//                startService(serviceIntent);
+                PendingIntent pendingIntent = PendingIntent.getBroadcast(getApplicationContext(), START_SERVICE_REQUEST_CODE, broadcastIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
-                NotificationCompat.Builder builder = (NotificationCompat.Builder) new NotificationCompat.Builder(getApplicationContext())
-                        .setSmallIcon(R.drawable.icon)
-                        .setContentTitle(titleInput.getText())
-                        .setContentText(descriptionInput.getText());
-                Intent activityIntent = new Intent(getApplicationContext(), MainActivity.class);
+                AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
 
-                TaskStackBuilder stackBuilder = TaskStackBuilder.create(getApplicationContext());
-                stackBuilder.addParentStack(MainActivity.class);
-                stackBuilder.addNextIntent(activityIntent);
-                PendingIntent pendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
-
-                builder.setContentIntent(pendingIntent);
-
-                NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                notificationManager.notify(1, builder.build());
-
-            //    AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
-
-             //   alarmManager.set(AlarmManager.ELAPSED_REALTIME, System.currentTimeMillis() + 5000, pendingIntent);
-
+                alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
             }
         });
     }
@@ -114,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
             calendar.set(Calendar.YEAR, chosenYear);
             calendar.set(Calendar.MONTH, chosenMonth);
             calendar.set(Calendar.DAY_OF_MONTH, chosenDay);
-            textDate.setText(calendar.get(Calendar.DAY_OF_MONTH) + "." + calendar.get(Calendar.MONTH) + "." + calendar.get(Calendar.YEAR));
+            textDate.setText(calendar.get(Calendar.DAY_OF_MONTH) + "." + (calendar.get(Calendar.MONTH)+1) + "." + calendar.get(Calendar.YEAR));
         }
     };
 
@@ -128,4 +126,23 @@ public class MainActivity extends AppCompatActivity {
                     ":0" + calendar.get(Calendar.MINUTE) : calendar.get(Calendar.HOUR_OF_DAY) + ":" + calendar.get(Calendar.MINUTE));
         }
     };
+
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        savePref();
+        super.onSaveInstanceState(outState);
+    }
+
+
+    private void savePref(){
+        preferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putString(EXTRA_TITLE, titleInput.getText().toString());
+        editor.putString(EXTRA_DESCRIPTION, descriptionInput.getText().toString());
+        Gson gson = new Gson();
+        String json = gson.toJson(calendar);
+        editor.putString(EXTRA_CALENDAR, json);
+        editor.commit();
+    }
 }
