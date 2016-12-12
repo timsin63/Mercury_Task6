@@ -10,4 +10,5 @@
     <string name="error_title">Please, enter the title</string>
     <string name="error_date">Date and time must be greater than current</string>
     <string name="timezone">Europe/Samara</string>
+    <string name="toast_set">You setted the date and time</string>
 </resources>

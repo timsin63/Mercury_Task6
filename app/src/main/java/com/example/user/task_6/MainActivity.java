@@ -2,19 +2,13 @@ package com.example.user.task_6;
 
 import android.app.AlarmManager;
 import android.app.DatePickerDialog;
-
 import android.app.PendingIntent;
 import android.app.TimePickerDialog;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.TimeZone;
-
 import android.content.Intent;
-
 import android.content.SharedPreferences;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
+import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.DatePicker;
@@ -24,6 +18,10 @@ import android.widget.TimePicker;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
+
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.TimeZone;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -53,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
         textDate = (TextView) findViewById(R.id.text_date);
         textTime = (TextView) findViewById(R.id.text_time);
 
-        if (title != null && description != null && savedCalendarJson != null){
+        if (!TextUtils.isEmpty(title) && !TextUtils.isEmpty(description) && !TextUtils.isEmpty(savedCalendarJson)){
             titleInput.setText(title);
             descriptionInput.setText(description);
             Gson gson = new Gson();
@@ -63,16 +61,15 @@ public class MainActivity extends AppCompatActivity {
             calendar.set(Calendar.SECOND, 0);
         }
 
-        textDate.setText(calendar.get(Calendar.DAY_OF_MONTH) + "." + (calendar.get(Calendar.MONTH)+1) + "." + calendar.get(Calendar.YEAR));
+        textDate.setText(getDate(calendar));
 
-        textTime.setText(calendar.get(Calendar.MINUTE) < 10? calendar.get(Calendar.HOUR_OF_DAY) +
-                ":0" + calendar.get(Calendar.MINUTE) : calendar.get(Calendar.HOUR_OF_DAY) + ":" + calendar.get(Calendar.MINUTE));
+        textTime.setText(getTime(calendar));
 
-        Button saveBtn = (Button) findViewById(R.id.button_save);
+        final Button saveBtn = (Button) findViewById(R.id.button_save);
         saveBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (titleInput.getText().length() == 0){
+                if (TextUtils.isEmpty(titleInput.getText())){
                     Toast.makeText(getApplicationContext(), R.string.error_title, Toast.LENGTH_SHORT).show();
                     return;
                 }
@@ -90,7 +87,11 @@ public class MainActivity extends AppCompatActivity {
 
                 AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
 
+                savePref();
                 alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
+
+                Toast.makeText(getApplicationContext(), getResources().getString(R.string.toast_set) + ": " + getDate(calendar) + " " + getTime(calendar), Toast.LENGTH_LONG).show();
+
             }
         });
     }
@@ -112,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
             calendar.set(Calendar.YEAR, chosenYear);
             calendar.set(Calendar.MONTH, chosenMonth);
             calendar.set(Calendar.DAY_OF_MONTH, chosenDay);
-            textDate.setText(calendar.get(Calendar.DAY_OF_MONTH) + "." + (calendar.get(Calendar.MONTH)+1) + "." + calendar.get(Calendar.YEAR));
+            textDate.setText(getDate(calendar));
         }
     };
 
@@ -122,10 +123,19 @@ public class MainActivity extends AppCompatActivity {
         public void onTimeSet(TimePicker timePicker, int chosenHour, int chosenMinute) {
             calendar.set(Calendar.HOUR_OF_DAY, chosenHour);
             calendar.set(Calendar.MINUTE,chosenMinute);
-            textTime.setText(calendar.get(Calendar.MINUTE) < 10? calendar.get(Calendar.HOUR_OF_DAY) +
-                    ":0" + calendar.get(Calendar.MINUTE) : calendar.get(Calendar.HOUR_OF_DAY) + ":" + calendar.get(Calendar.MINUTE));
+            textTime.setText(getTime(calendar));
         }
     };
+
+
+    public String getDate(Calendar calendar){
+        return calendar.get(Calendar.DAY_OF_MONTH) + "." + (calendar.get(Calendar.MONTH)+1) + "." + calendar.get(Calendar.YEAR);
+    }
+
+    public String getTime(Calendar calendar){
+        return calendar.get(Calendar.MINUTE) < 10? calendar.get(Calendar.HOUR_OF_DAY) +
+                ":0" + calendar.get(Calendar.MINUTE) : calendar.get(Calendar.HOUR_OF_DAY) + ":" + calendar.get(Calendar.MINUTE);
+    }
 
 
     @Override
